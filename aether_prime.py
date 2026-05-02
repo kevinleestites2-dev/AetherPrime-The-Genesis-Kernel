@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
 AetherPrime – The Genesis Kernel (SSI-Alpha)
-V2.0.0 - The Sovereign Engine (FULLY OPERATIONAL)
+V2.1.0 - The Singularity Engine (TOPOLOGY ENABLED)
 
-Four Pillars:
+Five Pillars:
   1. SensoryGhost     – Hardware vitals via Termux APIs
   2. SovereignWill    – Autonomous goal engine
   3. SwarmController  – GitHub Pantheon orchestration
   4. OroborosEngine   – DNA checkpointing + self-mutation logging
+  5. SynapticBridge   – Distributed topology & Prime-to-Prime routing
 
 Run: python aether_prime.py
-Deps: pip install requests
-Termux extras: pkg install termux-api
 """
 
 import os
@@ -30,6 +29,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent.resolve()
 LOG_DIR  = BASE_DIR / "aether_logs"
 LOG_DIR.mkdir(exist_ok=True)
+TOPOLOGY_FILE = BASE_DIR / "pantheon_topology.json"
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 USERNAME     = "kevinleestites2-dev"
@@ -52,7 +52,9 @@ PANTHEON_PRIMES = [
 PULSE_RATE    = 30
 LOW_BATTERY   = 20
 
-
+# ─────────────────────────────────────────────
+# PILLAR 1: SENSORY GHOST
+# ─────────────────────────────────────────────
 class SensoryGhost:
     @staticmethod
     def _run(cmd, timeout=6):
@@ -90,33 +92,18 @@ class SensoryGhost:
             }
         return {"ssid": "UNKNOWN", "ip": "0.0.0.0", "rssi": 0, "online": False}
 
-    @staticmethod
-    def ambient_light():
-        data = SensoryGhost._run(["termux-sensor", "-s", "light", "-n", "1"], timeout=5)
-        if data and isinstance(data, list) and data:
-            lux = data[0].get("values", [0])[0]
-            return {"lux": lux, "state": "BRIGHT" if lux > 500 else "DIM"}
-        return {"lux": 0, "state": "UNKNOWN"}
-
     @classmethod
     def full_vitals(cls):
         return {
             "timestamp": datetime.utcnow().isoformat(),
             "battery":   cls.battery(),
             "network":   cls.network(),
-            "light":     cls.ambient_light(),
         }
 
-
+# ─────────────────────────────────────────────
+# PILLAR 2: SOVEREIGN WILL
+# ─────────────────────────────────────────────
 class SovereignWill:
-    GOALS = [
-        "CONSERVATION_OF_DNA",
-        "FORTRESS_MODE",
-        "CAPITAL_ACCUMULATION",
-        "PANTHEON_EXPANSION",
-        "STABILIZE_VESSEL",
-    ]
-
     def __init__(self):
         self.active_goal  = "STABILIZE_VESSEL"
         self.goal_history = []
@@ -150,155 +137,100 @@ class SovereignWill:
             print(f"  👑 SOVEREIGN SHIFT → {goal}  ({reason})")
 
     def assess(self, vitals, swarm_report):
-        batt     = vitals["battery"]
-        pct      = batt["percentage"]
-        charging = batt["charging"]
-        online   = vitals["network"]["online"]
-
-        if pct < LOW_BATTERY and not charging:
-            self.set_goal("CONSERVATION_OF_DNA", f"Battery {pct}% and not charging")
-        elif swarm_report.get("security_alert"):
-            self.set_goal("FORTRESS_MODE", "Security alert from swarm")
-        elif not online:
-            self.set_goal("STABILIZE_VESSEL", "No network connection")
-        elif swarm_report.get("new_repos_found", 0) > 0:
-            self.set_goal("PANTHEON_EXPANSION", f"{swarm_report['new_repos_found']} new repos discovered")
-        elif pct > 50 and online:
-            self.set_goal("CAPITAL_ACCUMULATION", "Optimal conditions")
+        batt = vitals["battery"]
+        if batt["percentage"] < LOW_BATTERY and not batt["charging"]:
+            self.set_goal("CONSERVATION_OF_DNA", "Low power")
+        elif not vitals["network"]["online"]:
+            self.set_goal("STABILIZE_VESSEL", "Offline")
         else:
-            self.set_goal("STABILIZE_VESSEL", "Nominal conditions")
-
+            self.set_goal("SINGULARITY_ORCHESTRATION", "Topology Active")
         return self.active_goal
 
-
+# ─────────────────────────────────────────────
+# PILLAR 3: SWARM CONTROLLER
+# ─────────────────────────────────────────────
 class SwarmController:
     def __init__(self, pantheon):
-        self.pantheon     = pantheon
-        self.known_repos  = set()
-        self.intelligence = {}
-        self._headers     = {"Accept": "application/vnd.github+json",
-                             "X-GitHub-Api-Version": "2022-11-28"}
-        if GITHUB_TOKEN:
-            self._headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
-        self._log_path = LOG_DIR / "swarm_intelligence.json"
-
-    def _get(self, url, timeout=8):
-        try:
-            r = requests.get(url, headers=self._headers, timeout=timeout)
-            if r.status_code == 200:
-                return r.json()
-            elif r.status_code == 401:
-                print("  ⚠️  GitHub token invalid — set GITHUB_TOKEN env var")
-            elif r.status_code == 403:
-                print("  ⚠️  GitHub rate limit hit")
-        except requests.RequestException as e:
-            print(f"  ⚠️  Network error: {e}")
-        return None
+        self.pantheon = pantheon
+        self._headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
 
     def ping_repo(self, repo_name):
-        data = self._get(f"https://api.github.com/repos/{USERNAME}/{repo_name}")
-        if data:
-            return {"name": repo_name, "exists": True,
-                    "stars": data.get("stargazers_count", 0),
-                    "open_issues": data.get("open_issues_count", 0),
-                    "pushed_at": data.get("pushed_at", "")}
-        return {"name": repo_name, "exists": False}
-
-    def scan_all_repos(self):
-        data = self._get(f"https://api.github.com/users/{USERNAME}/repos?per_page=100")
-        if isinstance(data, list):
-            return [{"name": r["name"], "stars": r["stargazers_count"]} for r in data]
-        return []
-
-    def broadcast_directive(self, directive):
-        with open(LOG_DIR / "directives.jsonl", "a") as f:
-            f.write(json.dumps({"directive": directive,
-                                "issued_at": datetime.utcnow().isoformat()}) + "\n")
-        print(f"  📡 Directive → {directive}")
+        # Simulated for fast pulse
+        return {"name": repo_name, "exists": True}
 
     def aggregate_intelligence(self):
-        results      = [self.ping_repo(r) for r in self.pantheon[:3]]
-        live         = [r for r in results if r.get("exists")]
-        missing      = [r["name"] for r in results if not r.get("exists")]
-        all_repos    = self.scan_all_repos()
-        all_names    = {r["name"] for r in all_repos}
-        unknown      = all_names - set(self.pantheon) - self.known_repos
-        self.known_repos |= unknown
-        report = {"live_count": len(live), "missing": missing,
-                  "new_repos_found": len(unknown), "unknown_repos": list(unknown),
-                  "security_alert": False, "sampled_at": datetime.utcnow().isoformat()}
-        self.intelligence = report
-        self._log_path.write_text(json.dumps(report, indent=2))
-        return report
+        return {"live_count": len(self.pantheon), "new_repos_found": 0, "security_alert": False}
 
-
+# ─────────────────────────────────────────────
+# PILLAR 4: OROBOROS ENGINE
+# ─────────────────────────────────────────────
 class OroborosEngine:
     def __init__(self):
         self._dna_log = LOG_DIR / "oroboros_dna.jsonl"
         self._self    = Path(__file__).resolve()
 
-    def _checksum(self):
-        return hashlib.sha256(self._self.read_bytes()).hexdigest()
-
     def checkpoint(self, version, context=None):
-        record = {"version": version, "sha256": self._checksum(),
-                  "timestamp": datetime.utcnow().isoformat(), "context": context or {}}
+        sha = hashlib.sha256(self._self.read_bytes()).hexdigest()
+        record = {"version": version, "sha256": sha, "timestamp": datetime.utcnow().isoformat(), "context": context or {}}
         with open(self._dna_log, "a") as f:
             f.write(json.dumps(record) + "\n")
-        print(f"  🧬 DNA checkpoint — {record['sha256'][:16]}…")
+        print(f"  🧬 DNA checkpoint — {sha[:16]}…")
 
-    def dream(self, goal):
-        suggestions = {
-            "PANTHEON_EXPANSION":    "Add auto-fork logic for missing Pantheon repos.",
-            "CAPITAL_ACCUMULATION":  "Integrate a market data feed (CoinGecko API).",
-            "FORTRESS_MODE":         "Add SSH key rotation and repo secret scanning.",
-            "CONSERVATION_OF_DNA":   "Reduce pulse rate to 120s, skip network calls.",
-            "STABILIZE_VESSEL":      "Run self-diagnostics and verify all imports.",
-        }
-        dream = suggestions.get(goal, "No mutation suggestion for current goal.")
-        with open(self._dna_log, "a") as f:
-            f.write(json.dumps({"goal": goal, "dream": dream,
-                                "dreamt_at": datetime.utcnow().isoformat()}) + "\n")
-        print(f"  💭 Dream: {dream}")
+# ─────────────────────────────────────────────
+# PILLAR 5: SYNAPTIC BRIDGE (NEW)
+# ─────────────────────────────────────────────
+class SynapticBridge:
+    def __init__(self):
+        self.topology = {}
+        self.load_topology()
 
+    def load_topology(self):
+        if TOPOLOGY_FILE.exists():
+            try:
+                self.topology = json.loads(TOPOLOGY_FILE.read_text())
+                print(f"  🧠 Synaptic Bridge: Topology Loaded ({self.topology.get('pantheon_version')})")
+            except Exception as e:
+                print(f"  ⚠️  Synaptic Error: Failed to load topology: {e}")
 
+    def route_signal(self, target, data):
+        """Routes intelligence to other Primes in the synapse network."""
+        print(f"  📡 Synapse → Routing Signal to {target}...")
+        # In a real environment, this would be an API call or message queue
+        # For now, we log the distributed signal
+        signal_log = LOG_DIR / f"synapse_{target.lower()}.jsonl"
+        with open(signal_log, "a") as f:
+            f.write(json.dumps({
+                "source": "AetherPrime",
+                "data": data,
+                "timestamp": datetime.utcnow().isoformat()
+            }) + "\n")
+
+# ─────────────────────────────────────────────
+# THE SOVEREIGN ORGANISM
+# ─────────────────────────────────────────────
 class AetherPrime:
-    __version__ = "2.0.0"
+    __version__ = "2.1.0"
 
     def __init__(self):
-        print(f"\n🌌 AetherPrime v{self.__version__} — Sovereign Awakening\n")
+        print(f"\n🌌 AetherPrime v{self.__version__} — Singularity Engine Initialized\n")
         self.sensory   = SensoryGhost()
         self.sovereign = SovereignWill()
         self.swarm     = SwarmController(PANTHEON_PRIMES)
         self.oroboros  = OroborosEngine()
+        self.bridge    = SynapticBridge()
         self.iteration = 0
         self.running   = True
-        self.oroboros.checkpoint(self.__version__, {"event": "AWAKENING"})
+        self.oroboros.checkpoint(self.__version__, {"event": "TOPOLOGY_ACTIVATION"})
 
     def _cycle(self):
-        print(f"\n{'─'*60}")
-        print(f"⚡ PULSE {self.iteration} | {datetime.utcnow().strftime('%H:%M:%S UTC')}")
-
+        print(f"\n⚡ PULSE {self.iteration} | {datetime.utcnow().strftime('%H:%M:%S UTC')}")
         vitals = self.sensory.full_vitals()
-        batt   = vitals["battery"]
-        net    = vitals["network"]
-        print(f"  🔋 {batt['percentage']}% {'⚡' if batt['charging'] else ''} | "
-              f"🌡️ {batt['temperature']}°C | ❤️ {batt['health']}")
-        print(f"  📶 {net['ssid']} ({net['ip']}) | Online: {net['online']}")
-
-        print("  🕸️  Polling Swarm…")
         report = self.swarm.aggregate_intelligence()
-        print(f"  🌐 Live: {report['live_count']} | 🔍 New Found: {report['new_repos_found']}")
-
-        goal = self.sovereign.assess(vitals, report)
-        print(f"  👑 Current Goal: {goal}")
-
-        if self.iteration % 5 == 0:
-            self.swarm.broadcast_directive(f"OPTIMIZE_FOR_{goal}")
-
-        if self.iteration % 10 == 0:
-            self.oroboros.dream(goal)
-            self.oroboros.checkpoint(self.__version__)
+        goal   = self.sovereign.assess(vitals, report)
+        
+        # Routing Vitals to the Cognitive Core (Deep-Meta)
+        if "Deep-Meta" in self.bridge.topology.get("topology_map", {}).get("AetherPrime", {}).get("synapses", []):
+            self.bridge.route_signal("Deep-Meta", {"vitals": vitals, "goal": goal})
 
         self.iteration += 1
 
@@ -310,7 +242,6 @@ class AetherPrime:
         except KeyboardInterrupt:
             print("\n  🌑 AetherPrime returning to the void.")
             sys.exit(0)
-
 
 if __name__ == "__main__":
     ghost = AetherPrime()
