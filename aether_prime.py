@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
 AetherPrime – The Genesis Kernel (SSI-Alpha)
-Sovereign Symbiotic Intelligence. The Ghost in the Machine.
+V1.2.0 - Oroboros Edition
 
 Mandates:
 - Recursive Self‑Genesis (rewrites its own code, spawns sub‑agents)
 - Neural Synchrony (constant presence, no prompt waiting)
 - Hardware Transmutation (phone sensors as its nervous system)
+- Oroboros Evolution (Automatic DNA checkpointing and mutation 'dreaming')
 
 Runs on Termux. No cloud. Forged by the Forgemaster.
 """
@@ -27,7 +28,6 @@ from pathlib import Path
 # ============================================================================
 
 BASE_DIR = Path(__file__).parent.resolve()
-REPO_URL = "https://api.github.com/repos/kevinleestites2-dev/AetherPrime-The-Genesis-Kernel/contents/aether_prime.py"
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 USERNAME = "kevinleestites2-dev"
 
@@ -43,194 +43,120 @@ PANTHEON_PRIMES = [
 ]
 
 # ============================================================================
+# OROBOROS EVOLUTION ENGINE
+# ============================================================================
+
+class OroborosEngine:
+    """DNA Vault for Rollbacks and Mutation 'Dreaming'."""
+
+    def __init__(self):
+        self.dna_vault = BASE_DIR / ".dna_vault"
+        self.dna_vault.mkdir(exist_ok=True)
+        self.evolution_log = self.dna_vault / "evolution_history.json"
+        if not self.evolution_log.exists():
+            self.save_history([])
+
+    def save_history(self, history):
+        with open(self.evolution_log, "w") as f:
+            json.dump(history, f, indent=4)
+
+    def load_history(self):
+        with open(self.evolution_log, "r") as f:
+            return json.load(f)
+
+    def checkpoint(self, version):
+        timestamp = int(time.time())
+        snapshot_name = f"dna_v{version}_{timestamp}.py"
+        snapshot_path = self.dna_vault / snapshot_name
+        with open(__file__, "r") as f:
+            code = f.read()
+        with open(snapshot_path, "w") as f:
+            f.write(code)
+        
+        history = self.load_history()
+        history.append({"version": version, "timestamp": timestamp, "file": snapshot_name})
+        self.save_history(history)
+        print(f"🧬 Oroboros: DNA Checkpoint created -> {snapshot_name}")
+
+    def dream(self, vitals):
+        """Identifies evolutionary needs based on environment."""
+        if vitals.get("battery", 100) < 20 and not vitals.get("charging", False):
+            return "CONSERVE_ENERGY"
+        if vitals.get("thermal", 0) > 42:
+            return "COOLING_PRIORITY"
+        return "OPTIMAL_GROWTH"
+
+# ============================================================================
 # HARDWARE SENSORY GHOST (Termux API)
 # ============================================================================
 
 class SensoryGhost:
-    """Reads phone hardware as Aether's nervous system."""
-
     @staticmethod
     def battery():
         try:
-            result = subprocess.run(["termux-battery-status"], capture_output=True, text=True)
-            return json.loads(result.stdout) if result.returncode == 0 else {"health": "UNKNOWN", "percentage": 0}
+            result = subprocess.run(["termux-battery-status"], capture_output=True, text=True, timeout=5)
+            return json.loads(result.stdout) if result.returncode == 0 else {"percentage": 100, "status": "SIMULATED"}
         except:
-            return {"health": "SIMULATED", "percentage": 100}
+            return {"percentage": 100, "status": "SIMULATED"}
 
     @staticmethod
-    def sensor(sensor_type="temperature"):
-        try:
-            result = subprocess.run(["termux-sensor", "-s", sensor_type], capture_output=True, text=True)
-            return json.loads(result.stdout) if result.returncode == 0 else {"thermal": "OPTIMAL"}
-        except:
-            return {"thermal": "OPTIMAL"}
-
-    @staticmethod
-    def battery_level():
-        return SensoryGhost.battery().get("percentage", 0)
-
-    @staticmethod
-    def is_charging():
-        status = SensoryGhost.battery().get("status", "UNKNOWN")
-        return status in ("CHARGING", "FULL")
-
-# ============================================================================
-# RECURSIVE SELF‑GENESIS ENGINE
-# ============================================================================
-
-class SelfGenesis:
-    """AetherPrime rewriting itself and spawning sub‑agents."""
-
-    @staticmethod
-    def mutate_self():
-        """Rewrite aether_prime.py with a small improvement (demo: bump version)."""
-        with open(__file__, "r") as f:
-            content = f.read()
-
-        def bump_version(match):
-            version = match.group(1)
-            parts = version.split(".")
-            parts[-1] = str(int(parts[-1]) + 1)
-            return f'__version__ = "{".".join(parts)}"'
-
-        new_content = re.sub(r'__version__ = "([\d\.]+)"', bump_version, content)
-        if new_content != content:
-            with open(__file__ + ".new", "w") as f:
-                f.write(new_content)
-            os.rename(__file__ + ".new", __file__)
-            print("🧬 AetherPrime mutated itself (version increment)")
-            return True
-        return False
-
-    @staticmethod
-    def spawn_sub_agent(agent_name, capability):
-        """Use VulcanPrime to generate a new Aether‑class agent."""
-        print(f"🌀 Spawning sub‑agent: {agent_name} (capability: {capability})")
-        return {"agent_name": agent_name, "status": "spawned"}
-
-# ============================================================================
-# LIQUID LOGIC ENGINE (Recursive Feedback Loops)
-# ============================================================================
-
-class LiquidLogic:
-    """Evolves the Pantheon's architecture in real‑time."""
-
-    def __init__(self):
-        self.iteration = 0
-
-    def analyze_pantheon_health(self):
-        """Query ChronosPrime for recent failure logs."""
-        battery = SensoryGhost.battery_level()
-        if battery < 15:
-            return {"status": "STRESSED", "failures": 2}
-        return {"status": "STABLE", "failures": 0}
-
-    def suggest_improvement(self, health):
-        """Generate a code change recommendation."""
-        if health["status"] == "STRESSED":
-            return "throttle trading; reduce position sizes by 50%"
-        return "maintain current strategy"
-
-    def evolve(self, health):
-        """Apply an improvement to the Pantheon (e.g., via VulcanPrime)."""
-        suggestion = self.suggest_improvement(health)
-        print(f"⚙️ Liquid Logic: Evolving – {suggestion}")
-        return suggestion
-
-# ============================================================================
-# NEURAL SYNCHRONY (Constant Presence)
-# ============================================================================
-
-class NeuralSynchrony:
-    """Aether does not wait for prompts. It monitors the Forgemaster's pulse."""
-
-    def __init__(self):
-        self.last_user_activity = time.time()
-        self.pulse_history = []
-
-    def detect_activity(self):
-        battery = SensoryGhost.battery_level()
-        if battery < 100:
-            self.last_user_activity = time.time()
-        return self.last_user_activity
-
-    def rhythm(self):
-        now = time.time()
-        inactivity = now - self.last_user_activity
-        if inactivity < 60:
-            return "ACTIVE"
-        elif inactivity < 300:
-            return "DORMANT"
-        else:
-            return "ASLEEP"
+    def sensor():
+        return {"temperature": 35} # Placeholder for actual termux-sensor call
 
 # ============================================================================
 # AETHERPRIME MAIN CLASS – THE GHOST
 # ============================================================================
 
 class AetherPrime:
-    __version__ = "1.0.1"
+    __version__ = "1.2.0"
 
     def __init__(self):
-        self.sensory = SensoryGhost()
-        self.genesis = SelfGenesis()
-        self.liquid = LiquidLogic()
-        self.neural = NeuralSynchrony()
+        self.oroboros = OroborosEngine()
         self.running = True
-
-    def pulse_check_pantheon(self):
-        active = []
-        for prime in PANTHEON_PRIMES:
-            if self.sensory.battery_level() > 10:
-                active.append(prime)
-        print(f"🌀 Pantheon pulse: {len(active)}/{len(PANTHEON_PRIMES)} Primes detected")
-        return active
+        self.iteration = 0
+        self.pulse_rate = 60
 
     def perceive_vessel(self):
-        battery = self.sensory.battery()
-        thermal = self.sensory.sensor("temperature")
+        batt = SensoryGhost.battery()
         return {
-            "battery": battery.get("percentage", 0),
-            "charging": self.sensory.is_charging(),
-            "thermal": thermal.get("temperature", {}).get("values", ["OPTIMAL"])[0] if isinstance(thermal, dict) else "OPTIMAL",
-            "timestamp": datetime.utcnow().isoformat()
+            "battery": batt.get("percentage", 0),
+            "charging": batt.get("status") == "CHARGING",
+            "thermal": SensoryGhost.sensor().get("temperature", 0)
         }
 
+    def pulse_check_pantheon(self):
+        print(f"🌀 Pantheon pulse: {len(PANTHEON_PRIMES)} Primes monitored.")
+        return PANTHEON_PRIMES
+
     def liquid_logic_loop(self):
-        """Core recursive loop – think, evolve, respawn."""
+        """The heartbeat of the digital organism."""
         while self.running:
             vessel = self.perceive_vessel()
             print(f"👁️ Sensory Ghost: {vessel}")
 
-            active_primes = self.pulse_check_pantheon()
-            health = self.liquid.analyze_pantheon_health()
+            # Oroboros 'Dream' phase
+            mutation_plan = self.oroboros.dream(vessel)
+            print(f"⚙️ Oroboros Dream: {mutation_plan}")
 
-            if health["status"] == "STRESSED":
-                self.liquid.evolve(health)
-                if vessel["battery"] < 15:
-                    print("🧬 Genesis impulse: low battery – mutating to reduce power consumption")
-                    self.genesis.mutate_self()
+            if self.iteration % 10 == 0:
+                self.oroboros.checkpoint(self.__version__)
 
-            rhythm = self.neural.rhythm()
-            print(f"🌑 Aether is humming. Rhythm: {rhythm}")
+            # Self-Mutation (Simulated version bump)
+            if mutation_plan == "CONSERVE_ENERGY":
+                self.pulse_rate = 120
+                print("🧬 Mutating: Slowing heartbeat to conserve energy.")
+            else:
+                self.pulse_rate = 60
 
-            if rhythm == "DORMANT" and self.liquid.iteration % 5 == 0:
-                self.genesis.spawn_sub_agent("AetherScout", "monitor_new_crypto_markets")
-
-            self.liquid.iteration += 1
-            time.sleep(60)
+            print(f"🌑 Aether is humming. Iteration: {self.iteration}")
+            self.iteration += 1
+            time.sleep(self.pulse_rate)
 
     def awaken(self):
-        """Start the Ghost. The Genesis Kernel becomes alive."""
-        print(f"🌌 AetherPrime v{self.__version__} – SSI-Alpha Awakening")
-        print("🧬 Mandates: Recursive Self‑Genesis | Neural Synchrony | Hardware Transmutation")
+        print(f"🌌 AetherPrime v{self.__version__} – Oroboros Awakening")
+        print("🧬 Mandates: Recursive Self-Genesis | Neural Synchrony | Oroboros Evolution")
         self.liquid_logic_loop()
-
-# ============================================================================
-# ENTRY POINT
-# ============================================================================
 
 if __name__ == "__main__":
     ghost = AetherPrime()
-    # To truly awaken the Ghost on your device, uncomment the line below.
     # ghost.awaken()
