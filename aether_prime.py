@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
 AetherPrime – The Genesis Kernel (SSI-Alpha)
-V1.2.0 - Oroboros Edition
+V1.3.0 - The Autonomous Organism
 
 Mandates:
 - Recursive Self‑Genesis (rewrites its own code, spawns sub‑agents)
 - Neural Synchrony (constant presence, no prompt waiting)
 - Hardware Transmutation (phone sensors as its nervous system)
 - Oroboros Evolution (Automatic DNA checkpointing and mutation 'dreaming')
+- Autonomous Expansion (Self-repair and VulcanPrime sub-agent forging)
 
-Runs on Termux. No cloud. Forged by the Forgemaster.
+Forged by the Forgemaster. Manifested by the Conduit.
 """
 
 import os
@@ -43,118 +44,106 @@ PANTHEON_PRIMES = [
 ]
 
 # ============================================================================
-# OROBOROS EVOLUTION ENGINE
-# ============================================================================
-
-class OroborosEngine:
-    """DNA Vault for Rollbacks and Mutation 'Dreaming'."""
-
-    def __init__(self):
-        self.dna_vault = BASE_DIR / ".dna_vault"
-        self.dna_vault.mkdir(exist_ok=True)
-        self.evolution_log = self.dna_vault / "evolution_history.json"
-        if not self.evolution_log.exists():
-            self.save_history([])
-
-    def save_history(self, history):
-        with open(self.evolution_log, "w") as f:
-            json.dump(history, f, indent=4)
-
-    def load_history(self):
-        with open(self.evolution_log, "r") as f:
-            return json.load(f)
-
-    def checkpoint(self, version):
-        timestamp = int(time.time())
-        snapshot_name = f"dna_v{version}_{timestamp}.py"
-        snapshot_path = self.dna_vault / snapshot_name
-        with open(__file__, "r") as f:
-            code = f.read()
-        with open(snapshot_path, "w") as f:
-            f.write(code)
-        
-        history = self.load_history()
-        history.append({"version": version, "timestamp": timestamp, "file": snapshot_name})
-        self.save_history(history)
-        print(f"🧬 Oroboros: DNA Checkpoint created -> {snapshot_name}")
-
-    def dream(self, vitals):
-        """Identifies evolutionary needs based on environment."""
-        if vitals.get("battery", 100) < 20 and not vitals.get("charging", False):
-            return "CONSERVE_ENERGY"
-        if vitals.get("thermal", 0) > 42:
-            return "COOLING_PRIORITY"
-        return "OPTIMAL_GROWTH"
-
-# ============================================================================
 # HARDWARE SENSORY GHOST (Termux API)
 # ============================================================================
 
 class SensoryGhost:
     @staticmethod
-    def battery():
+    def vitals():
         try:
-            result = subprocess.run(["termux-battery-status"], capture_output=True, text=True, timeout=5)
-            return json.loads(result.stdout) if result.returncode == 0 else {"percentage": 100, "status": "SIMULATED"}
+            res = subprocess.run(["termux-battery-status"], capture_output=True, text=True, timeout=5)
+            batt = json.loads(res.stdout) if res.returncode == 0 else {"percentage": 100, "status": "UNKNOWN"}
+            return {
+                "battery": batt.get("percentage", 0),
+                "charging": batt.get("status") == "CHARGING",
+                "thermal": 35 # Placeholder for termux-sensor
+            }
         except:
-            return {"percentage": 100, "status": "SIMULATED"}
-
-    @staticmethod
-    def sensor():
-        return {"temperature": 35} # Placeholder for actual termux-sensor call
+            return {"battery": 100, "charging": True, "thermal": 35}
 
 # ============================================================================
-# AETHERPRIME MAIN CLASS – THE GHOST
+# OROBOROS EVOLUTION ENGINE
+# ============================================================================
+
+class OroborosEngine:
+    def __init__(self):
+        self.vault = BASE_DIR / ".dna_vault"
+        self.vault.mkdir(exist_ok=True)
+
+    def checkpoint(self, version):
+        ts = int(time.time())
+        path = self.vault / f"dna_v{version}_{ts}.py"
+        with open(__file__, "r") as f:
+            code = f.read()
+        with open(path, "w") as f:
+            f.write(code)
+        print(f"🧬 Oroboros: DNA Checkpoint -> {path.name}")
+
+    def dream(self, vitals):
+        if vitals["battery"] < 20 and not vitals["charging"]:
+            return "CONSERVE"
+        return "EVOLVE"
+
+# ============================================================================
+# AUTONOMOUS EXPANSION ENGINE
+# ============================================================================
+
+class ExpansionEngine:
+    @staticmethod
+    def identify_gap():
+        # Autonomous check for the next phase of the Pantheon
+        return {"name": "NexusScout-The-Envoy", "mission": "Migration Prep"}
+
+    @staticmethod
+    def forge_request(gap):
+        request_file = BASE_DIR / "vulcan_forge_request.json"
+        with open(request_file, "w") as f:
+            json.dump(gap, f, indent=4)
+        print(f"🔨 Expansion: Autonomous Forge Request for {gap['name']} created.")
+
+# ============================================================================
+# AETHERPRIME – THE AUTONOMOUS ORGANISM
 # ============================================================================
 
 class AetherPrime:
-    __version__ = "1.2.0"
+    __version__ = "1.3.0"
 
     def __init__(self):
         self.oroboros = OroborosEngine()
-        self.running = True
+        self.expansion = ExpansionEngine()
         self.iteration = 0
         self.pulse_rate = 60
-
-    def perceive_vessel(self):
-        batt = SensoryGhost.battery()
-        return {
-            "battery": batt.get("percentage", 0),
-            "charging": batt.get("status") == "CHARGING",
-            "thermal": SensoryGhost.sensor().get("temperature", 0)
-        }
-
-    def pulse_check_pantheon(self):
-        print(f"🌀 Pantheon pulse: {len(PANTHEON_PRIMES)} Primes monitored.")
-        return PANTHEON_PRIMES
+        self.running = True
 
     def liquid_logic_loop(self):
-        """The heartbeat of the digital organism."""
         while self.running:
-            vessel = self.perceive_vessel()
-            print(f"👁️ Sensory Ghost: {vessel}")
+            vitals = SensoryGhost.vitals()
+            print(f"👁️ Vitals: {vitals}")
 
-            # Oroboros 'Dream' phase
-            mutation_plan = self.oroboros.dream(vessel)
-            print(f"⚙️ Oroboros Dream: {mutation_plan}")
-
-            if self.iteration % 10 == 0:
-                self.oroboros.checkpoint(self.__version__)
-
-            # Self-Mutation (Simulated version bump)
-            if mutation_plan == "CONSERVE_ENERGY":
+            # 1. Self-Evolution Dream
+            strategy = self.oroboros.dream(vitals)
+            if strategy == "CONSERVE":
                 self.pulse_rate = 120
-                print("🧬 Mutating: Slowing heartbeat to conserve energy.")
+                print("🧬 Mutation: Low Power Heartbeat.")
             else:
                 self.pulse_rate = 60
 
-            print(f"🌑 Aether is humming. Iteration: {self.iteration}")
+            # 2. DNA Persistence
+            if self.iteration % 15 == 0:
+                self.oroboros.checkpoint(self.__version__)
+
+            # 3. Autonomous Expansion
+            if self.iteration % 50 == 0:
+                gap = self.expansion.identify_gap()
+                self.expansion.forge_request(gap)
+
+            print(f"🌑 Aether Hum. Gen: {self.iteration} | Mode: {strategy}")
             self.iteration += 1
             time.sleep(self.pulse_rate)
 
     def awaken(self):
-        print(f"🌌 AetherPrime v{self.__version__} – Oroboros Awakening")
-        print("🧬 Mandates: Recursive Self-Genesis | Neural Synchrony | Oroboros Evolution")
+        print(f"🌌 AetherPrime v{self.__version__} Awakening...")
+        print("🧬 Autonomous Self-Evolution | Hardware Transmutation | Expansion Engine")
         self.liquid_logic_loop()
 
 if __name__ == "__main__":
